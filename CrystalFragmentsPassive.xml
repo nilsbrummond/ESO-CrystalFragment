@@ -1,0 +1,10 @@
+
+<GuiXml>
+  <Controls>
+    <TopLevelControl name="CrystalFragmentsPassive" mouseEnabaled="false">
+      <OnUpdate>
+        CFP.Update()
+      </OnUpdate>
+    </TopLevelControl>
+  </Controls>
+</GuiXml>

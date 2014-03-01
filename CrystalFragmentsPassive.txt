@@ -1,0 +1,5 @@
+## Title: Crystal Fragments Passive
+## APIVersion: 100000
+
+CrystalFragmentsPassive.xml
+CrystalFragmentsPassive.lua
