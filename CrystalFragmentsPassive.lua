@@ -13,8 +13,14 @@
 -- This addon's goal is to give a clearer indication of the presense of 
 -- the passive effect.
 
+-- Release Notes:
+--    Version 3 was the last version tested.  I don't have access to
+--    ESO till the next beta or release.  So use version 3 if you want
+--    something that works and is tested.
+
 -- TODO:
---    Make the indicator look better...
+--    Make the indicator look better
+--      - Perhaps change to an ultimate like overlay animation.
 --    De-Register hooks if not a sorcerer
 
 
@@ -31,7 +37,7 @@
 
 
 CFP = {}
-CFP.version = 0.03
+CFP.version = 0.04
 CFP.debug = false
 CFP.active = false
 
@@ -154,10 +160,12 @@ function CFP.UpdateIndicator()
   end
 
   if index < 0 then 
+    -- Crystal Fragments is not on the action bar.
     CFP.TLW:SetHidden(true)
     return 
   end
 
+  -- anchor the indicator to the correct action button and show it.
   CFP.Anchor(index)
   CFP.TLW:SetHidden(false)
 
@@ -184,21 +192,26 @@ end
 -- Anchor the indicator over the correct button.
 function CFP.MakeAnchor(h)
 
-  -- Action Slots vs the UI buttons - index is off by 1.
+  -- Why h/3 as the offset above the action button?
+  -- Rule of thirds is always a good place to start...
+  -- http://en.wikipedia.org/wiki/Rule_of_thirds
+  local y_offset = -h/3
 
   return function (index)
       local win = CFP.TLW
       win:SetAnchor(
           BOTTOM, 
+          -- Action Slots vs the UI buttons - index is off by 1.
           ZO_ActionBar1:GetChild(index+1),
           TOP,
-          0, -h/3)
+          0, y_offset)
     end
 
 end
 
 function CFP.InitializeGUI()
 
+  -- Just use the first action button for sizing...
   local w,h = ZO_ActionBar1:GetChild(3):GetDimensions()
 
   CFP.TLW = CFP.BallAndChain( 
