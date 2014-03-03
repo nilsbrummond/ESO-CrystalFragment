@@ -1,8 +1,25 @@
 --
 -- Crystal Fragment Passive
+-- 
+-- github.com/nilsbrummond/ESO-CrystalFragments
 --
 
+-- Detects the effect 'Crystal Fragment Passive' which grants the
+-- next use of 'Crystal Fragment' as an instant cast ability.
+-- 
+-- The default game indicator of the passive effect is glowing purple
+-- hands on the player.
+--
+-- This addon's goal is to give a clearer indication of the presense of 
+-- the passive effect.
 
+-- TODO:
+--    Make the indicator look better...
+--    De-Register hooks if not a sorcerer
+
+
+-- Notes:
+--
 -- Sorcerer:
 -- GetUnitClassId('player') == 2
 
@@ -13,22 +30,28 @@
 -- Returns: bool found
 
 
--- 4 to 8
-
-
 CFP = {}
+CFP.version = 0.03
+CFP.debug = false
+CFP.active = false
 
 local function GetBuffIcon()
   return 'esoui/art/icons/ability_sorcerer_thunderclap.dds'
+end
+
+local function Debug(text)
+
+  if CFP.debug then
+    d (text)
+  end
+
 end
 
 local function Initialize( self, addOnName )
 
   if addOnName ~= "CrystalFragmentsPassive" then return end
 
-  d( "CrystalFragmentsPassive" )
-
-  if GetUnitClass('player') == 'Sorceser' then d('good') end
+  -- if GetUnitClass('player') == 'Sorceser' then d('good') end
 
   EVENT_MANAGER:RegisterForEvent( 
       "CrystalFragmentsPassive", EVENT_EFFECT_CHANGED, CFP.EventEffectChanged )
@@ -37,11 +60,9 @@ local function Initialize( self, addOnName )
       "CrystalFragmentsPassive", EVENT_ACTIVE_WEAPON_PAIR_CHANGED, CFP.EventWeaponSwap )
 
   CFP.InitializeGUI()
-
-  -- CFP.UpdateIndicator()
 end
 
-
+-- Fade the Indicator over time from alpha 1 to .2
 function CFP.Update()
 
   if CFP.active then
@@ -68,8 +89,13 @@ function CFP.EventEffectChanged( eventCode, changeType, effectSlot,
   -- This is the buff by name
   if effectName ~= "Crystal Fragments Passive" then return end
 
-  d( "CFP:" .. " " .. changeType .. " " .. effectSlot .. " " .. effectName .. " " .. unitTag .. " " .. beginTime .. " " .. endTime .. " " .. stackCount ..  " " .. " " .. iconName .. " " .. buffType .. " " .. effectType .. " " .. abilityType .. " " .. statusEffectType )
+  Debug( "CFP:" .. " " .. changeType .. " " .. effectSlot .. " " .. 
+         effectName .. " " .. unitTag .. " " .. beginTime .. " " .. 
+         endTime .. " " .. stackCount ..  " " .. " " .. iconName .. " " .. 
+         buffType .. " " .. effectType .. " " .. abilityType .. " " ..
+         statusEffectType )
 
+  -- TODO: Need to find the CONSTants for 1, 2, and 3 in here:
   if (2 == changeType) then
     -- Buff ended
     CFP.DisableIndicator()
@@ -82,7 +108,7 @@ end
 
 function CFP.EventWeaponSwap( activeWeaponPair, locked )
 
-  d ( "SWAP lvl=" .. activeWeaponPair .. " lock=" .. locked )
+  Debug ( "SWAP lvl=" .. activeWeaponPair .. " lock=" .. locked )
 
   CFP.UpdateIndicator()
 
@@ -90,7 +116,7 @@ end
 
 function CFP.EnableIndicator(beginTime, endTime)
 
-  d ( "CFP.EnableIndicator" )
+  Debug ( "CFP.EnableIndicator" )
 
   CFP.active = true
   CFP.endTime = endTime
@@ -104,7 +130,7 @@ end
 
 function CFP.DisableIndicator()
 
-  d ( "CFP.DisableIndicator" )
+  Debug ( "CFP.DisableIndicator" )
 
   CFP.active = false
   CFP.TLW:SetHidden(true)
@@ -115,7 +141,9 @@ function CFP.UpdateIndicator()
 
   if not CFP.active then return end
 
-  d ( "CFP.UpdateIndicator" )
+  Debug ( "CFP.UpdateIndicator" )
+
+  -- Find which slot the "Crystal Fragment" ability is slotted.
 
   local index = -1
 
@@ -126,12 +154,9 @@ function CFP.UpdateIndicator()
   end
 
   if index < 0 then 
-    d ( "Not on bar" )
     CFP.TLW:SetHidden(true)
     return 
   end
-
-  d ( "buff on" )
 
   CFP.Anchor(index)
   CFP.TLW:SetHidden(false)
@@ -156,7 +181,10 @@ function CFP.BallAndChain( object )
 	return T
 end
 
+-- Anchor the indicator over the correct button.
 function CFP.MakeAnchor(h)
+
+  -- Action Slots vs the UI buttons - index is off by 1.
 
   return function (index)
       local win = CFP.TLW
