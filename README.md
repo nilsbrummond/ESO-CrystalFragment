@@ -1,4 +1,7 @@
 ESO-CrystalFragment
 ===================
 
-Elder Scrolls Addon to show the Crystal Fragment passive effect.
+Elder Scrolls Online addon to show the Crystal Fragment passive effect
+in a more noticable manor.
+
+Please download current release from www.esoui.com
