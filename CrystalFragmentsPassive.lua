@@ -21,7 +21,6 @@
 -- TODO:
 --    Make the indicator look better
 --      - Perhaps change to an ultimate like overlay animation.
---    De-Register hooks if not a sorcerer
 
 
 -- Notes:
@@ -40,6 +39,7 @@ CFP = {}
 CFP.version = 0.04
 CFP.debug = false
 CFP.active = false
+CFP.enabled = false
 
 local function GetBuffIcon()
   return 'esoui/art/icons/ability_sorcerer_thunderclap.dds'
@@ -57,15 +57,53 @@ local function Initialize( self, addOnName )
 
   if addOnName ~= "CrystalFragmentsPassive" then return end
 
-  -- if GetUnitClass('player') == 'Sorceser' then d('good') end
-
-  EVENT_MANAGER:RegisterForEvent( 
-      "CrystalFragmentsPassive", EVENT_EFFECT_CHANGED, CFP.EventEffectChanged )
+  CFP.InitializeGUI()
 
   EVENT_MANAGER:RegisterForEvent(
-      "CrystalFragmentsPassive", EVENT_ACTIVE_WEAPON_PAIR_CHANGED, CFP.EventWeaponSwap )
+      "CrystalFragmentsPassive", EVENT_PLAYER_ACTIVATED, CFP.EventPlayerActivated )
 
-  CFP.InitializeGUI()
+  -- In case the player is already active.
+  CFP.EventPlayerActivated()
+
+end
+
+-- 
+function CFP.EventPlayerActivated()
+
+  -- TODO: find the global constant for 2 - sorcerer...
+  if GetUnitClassId('player') == 2 then
+
+    if not CFP.enabled then
+      CFP.enabled = true
+      EVENT_MANAGER:RegisterForEvent( 
+          "CrystalFragmentsPassive", 
+          EVENT_EFFECT_CHANGED, CFP.EventEffectChanged )
+
+      EVENT_MANAGER:RegisterForEvent(
+          "CrystalFragmentsPassive", 
+          EVENT_ACTIVE_WEAPON_PAIR_CHANGED, CFP.EventWeaponSwap )
+    end
+
+  else
+    
+    if CFP.enabled then
+      CFP.enabled = false
+
+      -- TODO: need to verify UnregisterForEvent signature...
+
+      EVENT_MANAGER:UnregisterForEvent( 
+          "CrystalFragmentsPassive", 
+          EVENT_EFFECT_CHANGED, CFP.EventEffectChanged )
+
+      EVENT_MANAGER:UnregisterForEvent(
+          "CrystalFragmentsPassive", 
+          EVENT_ACTIVE_WEAPON_PAIR_CHANGED, CFP.EventWeaponSwap )
+ 
+      -- Just in case..
+      CFP.DisableIndicator()
+    end
+
+  end
 end
 
 -- Fade the Indicator over time from alpha 1 to .2
