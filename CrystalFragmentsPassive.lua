@@ -14,13 +14,8 @@
 -- the passive effect.
 
 -- Release Notes:
---    Version 3 was the last version tested.  I don't have access to
---    ESO till the next beta or release.  So use version 3 if you want
---    something that works and is tested.
-
--- TODO:
---    Make the indicator look better
---      - Perhaps change to an ultimate like overlay animation.
+--    Indicator now hidden when in UI mode.
+--    Better looking now.
 
 
 -- Notes:
@@ -41,9 +36,6 @@ CFP.debug = false
 CFP.active = false
 CFP.enabled = false
 
-local function GetBuffIcon()
-  return 'esoui/art/icons/ability_sorcerer_thunderclap.dds'
-end
 
 local function Debug(text)
 
@@ -52,6 +44,25 @@ local function Debug(text)
   end
 
 end
+
+-- Just cause a chain by itself is boring.
+local function BallAndChain( object )
+	
+	local T = {}
+	setmetatable( T , { __index = function( self , func )
+		
+		if func == "__BALL" then	return object end
+		
+		return function( self , ... )
+			assert( object[func] , func .. " missing in object" )
+			object[func]( object , ... )
+			return self
+		end
+	end })
+	
+	return T
+end
+
 
 local function Initialize( self, addOnName )
 
@@ -63,11 +74,12 @@ local function Initialize( self, addOnName )
       "CrystalFragmentsPassive", EVENT_PLAYER_ACTIVATED, CFP.EventPlayerActivated )
 
   -- In case the player is already active.
-  CFP.EventPlayerActivated()
+  if IsPlayerActivated() then
+    CFP.EventPlayerActivated()
+  end
 
 end
 
--- 
 function CFP.EventPlayerActivated()
 
   -- TODO: find the global constant for 2 - sorcerer...
@@ -82,6 +94,10 @@ function CFP.EventPlayerActivated()
       EVENT_MANAGER:RegisterForEvent(
           "CrystalFragmentsPassive", 
           EVENT_ACTIVE_WEAPON_PAIR_CHANGED, CFP.EventWeaponSwap )
+      
+      EVENT_MANAGER:RegisterForEvent( 
+          "CrystalFragmentsPassive", 
+          EVENT_RETICLE_HIDDEN_UPDATE, CFP.EventReticleHiddenUpdate )
     end
 
   else
@@ -99,6 +115,10 @@ function CFP.EventPlayerActivated()
           "CrystalFragmentsPassive", 
           EVENT_ACTIVE_WEAPON_PAIR_CHANGED, CFP.EventWeaponSwap )
  
+      EVENT_MANAGER:UnregisterForEvent( 
+          "CrystalFragmentsPassive", 
+          EVENT_RETICLE_HIDDEN_UPDATE, CFP.EventReticleHiddenUpdate )
+
       -- Just in case..
       CFP.DisableIndicator()
     end
@@ -111,9 +131,9 @@ function CFP.Update()
 
   if CFP.active then
     local gameTime = GetGameTimeMilliseconds() / 1000
-    local left = math.floor( CFP.endTime - gameTime )
+    local left = CFP.endTime - gameTime
 
-    if ( left > 0 ) then
+    if ( left > 0.01 ) then
       local alpha = (left / CFP.duration) + 0.2
       CFP.TLW:SetAlpha(alpha)
     else
@@ -158,6 +178,14 @@ function CFP.EventWeaponSwap( activeWeaponPair, locked )
 
 end
 
+function CFP.EventReticleHiddenUpdate(event, hidden)
+  
+  Debug ( "Reticle hidden=" .. tostring(hidden) )
+
+  CFP.UpdateIndicator()
+
+end
+
 function CFP.EnableIndicator(beginTime, endTime)
 
   Debug ( "CFP.EnableIndicator" )
@@ -187,6 +215,13 @@ function CFP.UpdateIndicator()
 
   Debug ( "CFP.UpdateIndicator" )
 
+  if IsReticleHidden() then
+    -- hide al the combat UI stuff...  
+    -- in charcter sheet, inventory, etc..
+    CFP.TLW:SetHidden(true)
+    return 
+  end
+
   -- Find which slot the "Crystal Fragment" ability is slotted.
 
   local index = -1
@@ -209,26 +244,8 @@ function CFP.UpdateIndicator()
 
 end
 
--- Just cause a chain by itself is boring.
-function CFP.BallAndChain( object )
-	
-	local T = {}
-	setmetatable( T , { __index = function( self , func )
-		
-		if func == "__BALL" then	return object end
-		
-		return function( self , ... )
-			assert( object[func] , func .. " missing in object" )
-			object[func]( object , ... )
-			return self
-		end
-	end })
-	
-	return T
-end
-
 -- Anchor the indicator over the correct button.
-function CFP.MakeAnchor(h)
+local function MakeAnchor(h)
 
   -- Why h/3 as the offset above the action button?
   -- Rule of thirds is always a good place to start...
@@ -247,26 +264,50 @@ function CFP.MakeAnchor(h)
 
 end
 
+-- Anchor the indicator covering the correct button.
+-- local function MakeAnchorFill(h)
+-- 
+--   return function (index)
+--       local win = CFP.TLW
+--       win:SetAnchor(
+--           BOTTOM, 
+--           -- Action Slots vs the UI buttons - index is off by 1.
+--           ZO_ActionBar1:GetChild(index+1),
+--           TOP,
+--           0, -10)
+--     end
+-- 
+-- end
+
 function CFP.InitializeGUI()
 
   -- Just use the first action button for sizing...
   local w,h = ZO_ActionBar1:GetChild(3):GetDimensions()
 
-  CFP.TLW = CFP.BallAndChain( 
-      WINDOW_MANAGER:CreateTopLevelWindow("CFP_BuffDisplay") )
+  CFP.TLW = BallAndChain( 
+      WINDOW_MANAGER:CreateTopLevelWindow("CFPBuffDisplay") )
     :SetHidden(true)
-    :SetDimensions(w,h)
+    :SetDimensions(2*w/3,2*h/3)
   .__BALL
 
-  CFP.icon = CFP.BallAndChain(
-      WINDOW_MANAGER:CreateControl("CFP_Icon", CFP.TLW, CT_TEXTURE) )
+  CFP.icon = BallAndChain(
+      WINDOW_MANAGER:CreateControl("CFPIcon", CFP.TLW, CT_TEXTURE) )
     :SetHidden(false)
-    :SetTexture(GetBuffIcon())
-    :SetDimensions(w,h)
+    :SetTexture('esoui/art/icons/ability_sorcerer_thunderclap.dds')
+    :SetDimensions(2*w/3,2*h/3)
     :SetAnchorFill(CFP.TLW)
   .__BALL
 
-  CFP.Anchor = CFP.MakeAnchor(h)
+  CFP.decoration = BallAndChain(
+      WINDOW_MANAGER:CreateControl("CFPDecoration", CFP.TLW, CT_TEXTURE) )
+    :SetHidden(false)
+    :SetTexture('/esoui/art/actionbar/actionslot_toggledon.dds')
+    :SetDimensions(2*w/3,2*h/3)
+    :SetAnchorFill(CFP.TLW)
+  .__BALL
+
+  CFP.Anchor = MakeAnchor(h)
+  -- CFP.Anchor = MakeAnchorFill(h)
   CFP.Anchor(3)
 
 end
